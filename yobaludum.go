@@ -124,6 +124,12 @@ func getAllResults(c context.Context) ([]PlayerData, error) {
 }
 
 func handlePlayer(c context.Context, data PlayerInfo, w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("YoBA-Secret") != "YobaSecretLoL" {
+		log.Infof(c, "Unauthorized request")
+		w.WriteHeader(401)
+		return
+	}
+
 	player := new(PlayerData)
 	player.Country = r.Header.Get("X-AppEngine-Country")
 	player.Region = r.Header.Get("X-AppEngine-Region")
