@@ -43,38 +43,40 @@ func init() {
 	m.Use(appEngine)
 	m.Use(martini.Logger())
 	m.Get("/", func(c context.Context, res http.ResponseWriter) {
-		players, err := getAllPlayers(c)
+		players, err := getAllPlayers(c, 200)
 		if err != nil {
 			log.Errorf(c, "Can't load players from DS: %v", err)
 		}
 		tmplt.Execute(res, players)
 	})
 
-	m.Get("/players.json", func(c context.Context, res http.ResponseWriter) {
-		if players, err := getAllPlayers(c); err != nil {
+	m.Get("/players.json", func(c context.Context, w http.ResponseWriter) {
+		w.Header().Add("Access-Control-Allow-Origin", "*")
+		if players, err := getAllPlayers(c, 20); err != nil {
 			log.Errorf(c, "Can't load players from DS: %v", err)
 		} else {
 			if b, err := json.Marshal(players); err != nil {
 				log.Errorf(c, "Can't convert players to json: %v", err)
 			} else {
-				res.Write(b)
+				w.Write(b)
 				return
 			}
 		}
-		res.WriteHeader(404)
+		w.WriteHeader(404)
 	})
-	m.Get("/results.json", func(c context.Context, res http.ResponseWriter) {
+	m.Get("/results.json", func(c context.Context, w http.ResponseWriter) {
+		w.Header().Add("Access-Control-Allow-Origin", "*")
 		if players, err := getAllResults(c); err != nil {
 			log.Errorf(c, "Can't load results from DS: %v", err)
 		} else {
 			if b, err := json.Marshal(players); err != nil {
 				log.Errorf(c, "Can't convert results to json: %v", err)
 			} else {
-				res.Write(b)
+				w.Write(b)
 				return
 			}
 		}
-		res.WriteHeader(404)
+		w.WriteHeader(404)
 	})
 	m.Post("/", binding.Bind(PlayerInfo{}), handlePlayer)
 
@@ -109,9 +111,9 @@ func findPlayer(c context.Context, key *datastore.Key) (*PlayerData, error) {
 	return data, nil
 }
 
-func getAllPlayers(c context.Context) ([]PlayerData, error) {
-	q := datastore.NewQuery("Players").Order("Time").Limit(200)
-	players := make([]PlayerData, 0, 200)
+func getAllPlayers(c context.Context, count int) ([]PlayerData, error) {
+	q := datastore.NewQuery("Players").Order("Time").Limit(count)
+	players := make([]PlayerData, 0, count)
 	_, err := q.GetAll(c, &players)
 	return players, err
 }
@@ -124,6 +126,7 @@ func getAllResults(c context.Context) ([]PlayerData, error) {
 }
 
 func handlePlayer(c context.Context, data PlayerInfo, w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Access-Control-Allow-Origin", "*")
 	if r.Header.Get("YoBA-Secret") != "YobaSecretLoL" {
 		log.Infof(c, "Unauthorized request")
 		w.WriteHeader(401)
